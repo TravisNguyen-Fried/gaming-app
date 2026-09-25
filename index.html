@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hello World</title>
+  <style>
+    :root {
+      font-family: Arial, sans-serif;
+      color: #1f2937;
+      background: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      transition: background-color 300ms ease;
+    }
+
+    main {
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      line-height: 1;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 20px;
+      color: #ffffff;
+      background: #2563eb;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Hello World</h1>
+    <button id="colorButton" type="button">Change background</button>
+  </main>
+
+  <script>
+    const colorButton = document.querySelector('#colorButton');
+
+    colorButton.addEventListener('click', () => {
+      const randomColor = Math.floor(Math.random() * 0xffffff)
+        .toString(16)
+        .padStart(6, '0');
+
+      document.body.style.backgroundColor = `#${randomColor}`;
+    });
+  </script>
+</body>
+<!-- </html> -->
