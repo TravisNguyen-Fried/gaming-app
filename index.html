@@ -143,6 +143,7 @@
 
     .page-shell { padding: 42px 0 116px; }
     .welcome-row { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+    .welcome-actions { display: flex; flex-wrap: wrap; gap: 9px; }
     .eyebrow { color: var(--lime); font-size: 10px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; }
     h1, h2, h3, p { margin-top: 0; }
     h1 { margin: 9px 0 8px; font-size: 32px; font-weight: 700; letter-spacing: 0; line-height: 1.15; }
@@ -164,6 +165,8 @@
       transition: background .16s ease, transform .16s ease;
     }
     .connect-button:hover, .primary-button:hover { background: #d2ff83; transform: translateY(-1px); }
+    .secondary-button { display: inline-flex; min-height: 39px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 5px; padding: 0 13px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .secondary-button:hover { border-color: var(--lime); color: var(--lime); }
 
     .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(290px, .88fr); gap: 30px; align-items: start; }
     .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -284,8 +287,9 @@
       .avatar { width: 33px; height: 33px; }
       .page-shell { width: calc(100% - 32px); padding-top: 29px; }
       .welcome-row { align-items: start; flex-direction: column; margin-bottom: 23px; }
+      .welcome-actions { width: 100%; }
       .welcome-row h1 { font-size: 27px; }
-      .connect-button { min-height: 36px; }
+      .connect-button, .secondary-button { min-height: 36px; }
       .game-row { grid-template-columns: 23px 88px minmax(0,1fr) 55px; gap: 9px; min-height: 78px; }
       .game-art { width: 88px; height: 52px; }
       .game-info h3 { font-size: 11px; }
@@ -368,7 +372,12 @@
       { appid: 435150, name: 'Divinity: Original Sin 2', genre: 'rpg', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/435150/header.jpg', reason: 'Deep party-building and player-shaped stories for your next long RPG night.', price: '$44.99' },
       { appid: 588650, name: 'Dead Cells', genre: 'action', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/588650/header.jpg', reason: 'Fast, precise combat and a new route to learn on every run.', price: '$24.99' },
       { appid: 1144200, name: 'Ready or Not', genre: 'shooter', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1144200/header.jpg', reason: 'A tense, team-based tactical shooter built around planning and coordinated room clears.', price: '$49.99' },
+      { appid: 387990, name: 'Scrap Mechanic', genre: 'sandbox', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/387990/header.jpg', reason: 'A playful building sandbox where your contraptions and experiments set the rules.', price: '$19.99' },
+      { appid: 1167630, name: 'Teardown', genre: 'sandbox', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1167630/header.jpg', reason: 'A fully destructible sandbox built for creative plans and spectacular escapes.', price: '$29.99' },
       { appid: 255710, name: 'Cities: Skylines', genre: 'cozy', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/255710/header.jpg', reason: 'Build a place to get lost in, one neighborhood at a time.', price: '$29.99' },
+      { appid: 433340, name: 'Slime Rancher', genre: 'cozy', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/433340/header.jpg', reason: 'A colorful, low-pressure world to explore and shape at your own pace.', price: '$19.99' },
+      { appid: 632360, name: 'Risk of Rain 2', genre: 'action', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/632360/header.jpg', reason: 'Fast co-op runs that get wilder the longer you survive.', price: '$24.99' },
+      { appid: 581320, name: 'Insurgency: Sandstorm', genre: 'shooter', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/581320/header.jpg', reason: 'A grounded squad shooter with deliberate, high-stakes firefights.', price: '$29.99' },
       { appid: 582010, name: 'Monster Hunter: World', genre: 'souls', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/582010/header.jpg', reason: 'A rewarding challenge, enormous creatures, and gear worth earning.', price: '$29.99' }
     ];
 
@@ -404,18 +413,24 @@
       if (game.genre) return game.genre;
       const title = game.name.toLowerCase();
       if (/rainbow six|counter-strike|valorant|call of duty|battlefield|apex legends|helldivers/.test(title)) return 'shooter';
+      if (/garry'?s mod|^gmod$|minecraft|rust|satisfactory|factorio|scrap mechanic|teardown|people playground/.test(title)) return 'sandbox';
       if (/elden ring|dark souls|sekiro|monster hunter/.test(title)) return 'souls';
       if (/stardew|cozy|simulator|cities: skylines|terraria/.test(title)) return 'cozy';
       if (/hades|doom|devil may cry|dead cells|counter-strike/.test(title)) return 'action';
-      if (/cyberpunk|baldur|witcher|fallout|elder scrolls|mass effect|dragon age/.test(title)) return 'rpg';
+      if (/cyberpunk|baldur|bauldur|witcher|fallout|elder scrolls|mass effect|dragon age/.test(title)) return 'rpg';
       return 'rpg';
     }
 
-    function getRecommendation() {
+    function getRecommendation(previousAppId) {
       const topGame = [...games].sort((a, b) => b.hours - a.hours)[0] || demoGames[0];
-      const genre = getGenre(topGame);
+      const genreHours = new Map();
+      games.forEach(game => {
+        const genre = getGenre(game);
+        genreHours.set(genre, (genreHours.get(genre) || 0) + (Number(game.hours) || 0));
+      });
+      const genre = [...genreHours.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || getGenre(topGame);
       const options = picks.filter(pick => pick.genre === genre);
-      const pick = options[0] || picks[0];
+      const pick = options.find(option => option.appid !== previousAppId) || options[0] || picks[0];
       return { ...pick, topGame: topGame.name, genre };
     }
 
@@ -439,7 +454,7 @@
       document.querySelector('#appContent').innerHTML = `
         <div class="welcome-row">
           <div><span class="eyebrow">YOUR LIBRARY, IN GOOD COMPANY</span><h1>Good evening, ${escapeHtml(profile?.name || 'Morgan')}.</h1><p>Your next favorite might be closer than you think.</p></div>
-          <button class="connect-button" type="button" data-connect><span aria-hidden="true">＋</span>${profile ? 'Manage Steam profile' : 'Connect Steam profile'}</button>
+          <div class="welcome-actions"><button class="secondary-button" type="button" data-add-game>Add a game</button><button class="connect-button" type="button" data-connect><span aria-hidden="true">＋</span>${profile ? 'Manage Steam profile' : 'Connect Steam profile'}</button></div>
         </div>
         <div class="dashboard-grid">
           <section aria-labelledby="mostPlayedTitle">
@@ -531,6 +546,40 @@
       document.querySelector('#connectForm').addEventListener('submit', connectSteam);
     }
 
+    function openAddGameModal() {
+      document.querySelector('#modalRoot').innerHTML = `
+        <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="addGameTitle">
+          <div class="modal-top"><div><span class="eyebrow">YOUR LIBRARY</span><h2 id="addGameTitle">Add a game</h2></div><button class="close-button" type="button" aria-label="Close" data-close>&times;</button></div>
+          <p>Steam only shares a short most-played list here. Add other games yourself; these stay saved in this browser.</p>
+          <form class="connect-form" id="addGameForm"><label for="manualGameName">Game name</label><input id="manualGameName" name="name" type="text" maxlength="80" placeholder="e.g. Another game" required><label for="manualGameHours">Hours played</label><input id="manualGameHours" name="hours" type="number" min="0" step="0.1" placeholder="0" required><label for="manualGameAppId">Steam app ID (optional)</label><input id="manualGameAppId" name="appid" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="For game artwork"><button class="primary-button" type="submit">Add to library</button><p class="form-message" id="formMessage" aria-live="polite"></p></form>
+        </section></div>`;
+      document.querySelector('#manualGameName').focus();
+      document.querySelector('#modalBackdrop').addEventListener('click', event => {
+        if (event.target.id === 'modalBackdrop' || event.target.closest('[data-close]')) closeModal();
+      });
+      document.querySelector('#addGameForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const name = String(form.get('name')).trim();
+        const hours = Number(form.get('hours'));
+        const requestedAppId = String(form.get('appid')).trim();
+        if (!name || !Number.isFinite(hours) || hours < 0 || (requestedAppId && !/^\d+$/.test(requestedAppId))) {
+          document.querySelector('#formMessage').textContent = 'Enter a game name, valid hours, and a numeric app ID if you use one.';
+          return;
+        }
+        const existing = games.find(game => game.name.toLowerCase() === name.toLowerCase());
+        const appid = requestedAppId || existing?.appid || `manual-${Date.now()}`;
+        const game = { appid, name, hours, image: requestedAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${requestedAppId}/header.jpg` : (existing?.image || ''), detail: 'Added manually' };
+        if (existing) Object.assign(existing, game);
+        else games.push(game);
+        activePick = getRecommendation(activePick?.appid);
+        saveProfile();
+        closeModal();
+        currentView = 'library';
+        render();
+      });
+    }
+
     function closeModal() { document.querySelector('#modalRoot').innerHTML = ''; }
 
     function extractProfilePath(value) {
@@ -552,6 +601,7 @@
       const message = document.querySelector('#formMessage');
       const profilePath = extractProfilePath(field.value);
       if (!profilePath) { message.textContent = 'Enter a Steam vanity name or a steamcommunity.com profile URL.'; return; }
+      if (/^\d/.test(profilePath) && !/^\d{17}$/.test(profilePath)) { message.textContent = 'A SteamID64 must be exactly 17 digits. Remove extra characters after the number.'; return; }
       const submit = event.currentTarget.querySelector('button[type="submit"]');
       submit.disabled = true;
       submit.textContent = 'Looking for your library…';
@@ -563,6 +613,8 @@
         if (!profileResponse.ok) throw new Error('Steam could not load that profile. Check the name or profile URL.');
         const profileText = await profileResponse.text();
         const profileXml = new DOMParser().parseFromString(profileText, 'application/xml');
+        const steamError = profileXml.querySelector('response error')?.textContent?.trim();
+        if (steamError) throw new Error('Steam could not find that profile. Check the SteamID64; it must be exactly 17 digits.');
         if (profileXml.querySelector('parsererror') || !profileXml.querySelector('profile')) throw new Error('Steam did not return profile XML for that name.');
         const privacy = profileXml.querySelector('privacyState')?.textContent?.trim().toLowerCase();
         if (privacy !== 'public') throw new Error('That Steam profile is not public. Set your profile visibility to Public and try again.');
@@ -580,7 +632,7 @@
         games = foundGames.sort((a, b) => b.hours - a.hours).slice(0, 5);
         const steamName = profileXml.querySelector('steamID')?.textContent?.trim();
         profile = { name: steamName || profilePath, path: profilePath };
-        activePick = getRecommendation();
+        activePick = getRecommendation(activePick?.appid);
         saveProfile();
         closeModal();
         currentView = 'library';
@@ -601,6 +653,7 @@
         return;
       }
       if (event.target.closest('[data-connect]') || event.target.closest('#profileButton')) { openConnectModal(); return; }
+      if (event.target.closest('[data-add-game]')) { openAddGameModal(); return; }
       const storeButton = event.target.closest('[data-store]');
       if (storeButton) window.open(`https://store.steampowered.com/app/${encodeURIComponent(storeButton.dataset.store)}/`, '_blank', 'noopener,noreferrer');
     });
