@@ -367,6 +367,7 @@
       { appid: 377160, name: 'Fallout 4', genre: 'rpg', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/377160/header.jpg', reason: 'A huge open world, memorable characters, and room to make every run your own.', price: '$19.99' },
       { appid: 435150, name: 'Divinity: Original Sin 2', genre: 'rpg', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/435150/header.jpg', reason: 'Deep party-building and player-shaped stories for your next long RPG night.', price: '$44.99' },
       { appid: 588650, name: 'Dead Cells', genre: 'action', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/588650/header.jpg', reason: 'Fast, precise combat and a new route to learn on every run.', price: '$24.99' },
+      { appid: 1144200, name: 'Ready or Not', genre: 'shooter', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1144200/header.jpg', reason: 'A tense, team-based tactical shooter built around planning and coordinated room clears.', price: '$49.99' },
       { appid: 255710, name: 'Cities: Skylines', genre: 'cozy', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/255710/header.jpg', reason: 'Build a place to get lost in, one neighborhood at a time.', price: '$29.99' },
       { appid: 582010, name: 'Monster Hunter: World', genre: 'souls', image: 'https://cdn.cloudflare.steamstatic.com/steam/apps/582010/header.jpg', reason: 'A rewarding challenge, enormous creatures, and gear worth earning.', price: '$29.99' }
     ];
@@ -402,6 +403,7 @@
     function getGenre(game) {
       if (game.genre) return game.genre;
       const title = game.name.toLowerCase();
+      if (/rainbow six|counter-strike|valorant|call of duty|battlefield|apex legends|helldivers/.test(title)) return 'shooter';
       if (/elden ring|dark souls|sekiro|monster hunter/.test(title)) return 'souls';
       if (/stardew|cozy|simulator|cities: skylines|terraria/.test(title)) return 'cozy';
       if (/hades|doom|devil may cry|dead cells|counter-strike/.test(title)) return 'action';
@@ -454,7 +456,7 @@
         </div>
         <div class="below-grid">
           <section><div class="section-heading"><h2>Your playtime</h2><span>Across ${games.length} games</span></div><div class="stat-strip"><div class="stat"><strong>${games.length}</strong><span>Games played</span></div><div class="stat"><strong>${Math.round(totalHours).toLocaleString()}</strong><span>Total hours</span></div><div class="stat"><strong>${formatHours(sorted[0]?.hours || 0).replace(' hrs','')}</strong><span>Top game hours</span></div></div></section>
-          <p class="note">${profile ? 'Showing public playtime from your connected Steam profile.' : 'Sample library shown. Connect a public Steam profile to see your games and playtime.'}</p>
+          <p class="note">${profile ? 'Showing most-played games from your public Steam profile.' : 'Sample library shown. Connect a public Steam profile to import its most-played games.'}</p>
         </div>`;
       applySearch();
     }
@@ -518,9 +520,9 @@
       document.querySelector('#modalRoot').innerHTML = `
         <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="connectTitle">
           <div class="modal-top"><div><span class="eyebrow">YOUR STEAM LIBRARY</span><h2 id="connectTitle">Connect your profile</h2></div><button class="close-button" type="button" aria-label="Close" data-close>&times;</button></div>
-          <p>Enter your Steam community profile name or profile URL. Your profile and game details must be public for Playlog to read your library.</p>
+          <p>Enter a public Steam community profile name, profile URL, or SteamID64. Playlog only requests public profile data.</p>
           <form class="connect-form" id="connectForm"><label for="steamProfile">Steam profile name or URL</label><input id="steamProfile" name="profile" type="text" placeholder="e.g. steamcommunity.com/id/yourname" autocomplete="url" required><button class="primary-button" type="submit">Find my library</button><p class="form-message" id="formMessage" aria-live="polite"></p></form>
-          <p class="privacy-note">Playlog reads public profile data only. This standalone version uses Steam's community games feed through a public CORS relay; no Steam password or API key is requested.</p>
+          <p class="privacy-note">No API key or Steam password is used. Playlog reads the most-played games included in your public Steam profile XML.</p>
         </section></div>`;
       document.querySelector('#steamProfile').focus();
       document.querySelector('#modalBackdrop').addEventListener('click', event => {
@@ -553,26 +555,30 @@
       const submit = event.currentTarget.querySelector('button[type="submit"]');
       submit.disabled = true;
       submit.textContent = 'Looking for your library…';
-      message.textContent = 'Checking public profile data…';
+      message.textContent = 'Checking public Steam profile data…';
       try {
-        const steamUrl = `https://steamcommunity.com/${profilePath.startsWith('765') ? 'profiles' : 'id'}/${encodeURIComponent(profilePath)}/games?tab=all&xml=1`;
-        const relayUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(steamUrl)}`;
-        const response = await fetch(relayUrl);
-        if (!response.ok) throw new Error('Steam profile lookup is temporarily unavailable. Try again later.');
-        const xmlText = await response.text();
-        const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
-        if (xml.querySelector('parsererror')) throw new Error('Steam did not return readable public library data. Check that your profile and game details are public.');
-        const gameNodes = Array.from(xml.getElementsByTagName('game'));
-        const foundGames = gameNodes.map(node => {
+        const profileType = /^\d{17}$/.test(profilePath) ? 'profiles' : 'id';
+        const profileUrl = `https://steamcommunity.com/${profileType}/${encodeURIComponent(profilePath)}`;
+        const profileResponse = await fetch(`${profileUrl}/?xml=1`);
+        if (!profileResponse.ok) throw new Error('Steam could not load that profile. Check the name or profile URL.');
+        const profileText = await profileResponse.text();
+        const profileXml = new DOMParser().parseFromString(profileText, 'application/xml');
+        if (profileXml.querySelector('parsererror') || !profileXml.querySelector('profile')) throw new Error('Steam did not return profile XML for that name.');
+        const privacy = profileXml.querySelector('privacyState')?.textContent?.trim().toLowerCase();
+        if (privacy !== 'public') throw new Error('That Steam profile is not public. Set your profile visibility to Public and try again.');
+
+        const foundGames = Array.from(profileXml.getElementsByTagName('mostPlayedGame')).map(node => {
           const get = name => node.getElementsByTagName(name)[0]?.textContent?.trim() || '';
-          const appid = get('appID') || get('appid');
-          const name = get('name');
+          const gameLink = get('gameLink');
+          const appid = get('statsName') || gameLink.match(/\/app\/(\d+)/)?.[1] || '';
+          const name = get('gameName');
           const hours = Number.parseFloat(get('hoursOnRecord')) || 0;
-          return { appid, name, hours, image: appid ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${encodeURIComponent(appid)}/header.jpg` : '', detail: 'Public Steam library' };
+          const image = get('gameLogo') || get('gameIcon') || (appid ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${encodeURIComponent(appid)}/header.jpg` : '');
+          return { appid, name, hours, image, detail: 'Most played on Steam' };
         }).filter(game => game.name && game.appid);
-        if (!foundGames.length) throw new Error('No public games found. Make sure your game details are public and try your profile URL or SteamID64.');
-        const steamName = xml.getElementsByTagName('steamID')[0]?.textContent?.trim();
-        games = foundGames;
+        if (!foundGames.length) throw new Error('This profile is public, but Steam returned no most-played games in its profile XML. Check Game details is Public and total playtime privacy is off. If those settings are already correct, Steam is not publishing game data for this profile; anonymous import cannot retrieve it without an API key.');
+        games = foundGames.sort((a, b) => b.hours - a.hours).slice(0, 5);
+        const steamName = profileXml.querySelector('steamID')?.textContent?.trim();
         profile = { name: steamName || profilePath, path: profilePath };
         activePick = getRecommendation();
         saveProfile();
