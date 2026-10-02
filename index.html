@@ -148,6 +148,11 @@
     h1, h2, h3, p { margin-top: 0; }
     h1 { margin: 9px 0 8px; font-size: 32px; font-weight: 700; letter-spacing: 0; line-height: 1.15; }
     .welcome-row p { margin: 0; color: var(--muted); font-size: 13px; }
+    .key-notice { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 24px; border: 1px solid rgba(255,136,107,.35); border-left: 3px solid var(--coral); border-radius: 5px; padding: 14px 16px; background: rgba(255,136,107,.07); }
+    .key-notice-copy { min-width: 0; }
+    .key-notice h2 { margin: 0 0 5px; color: #ffc0ad; font-size: 13px; }
+    .key-notice p { margin: 0; color: #c3c9c3; font-size: 11px; line-height: 1.55; }
+    .key-notice .secondary-button { flex: 0 0 auto; }
     .connect-button, .primary-button {
       display: inline-flex;
       min-height: 39px;
@@ -218,6 +223,9 @@
     .recommendation-copy .eyebrow { font-size: 9px; }
     .recommendation-copy h2 { margin: 6px 0 7px; font-size: 21px; }
     .recommendation-copy p { min-height: 35px; margin: 0 0 15px; color: #c1c9c2; font-size: 11px; line-height: 1.55; }
+    .recommendation-empty { display: flex; min-height: 260px; flex-direction: column; align-items: flex-start; justify-content: center; padding: 24px; }
+    .recommendation-empty h2 { margin: 8px 0; font-size: 18px; }
+    .recommendation-empty p { max-width: 260px; margin: 0 0 17px; color: var(--muted); font-size: 12px; line-height: 1.55; }
     .recommendation-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 13px; }
     .price { color: var(--lime); font-size: 12px; font-weight: 800; }
     .store-link { border: 0; padding: 0; background: transparent; color: var(--ink); cursor: pointer; font-size: 11px; }
@@ -290,6 +298,7 @@
       .welcome-actions { width: 100%; }
       .welcome-row h1 { font-size: 27px; }
       .connect-button, .secondary-button { min-height: 36px; }
+      .key-notice { align-items: start; flex-direction: column; gap: 12px; margin-bottom: 20px; }
       .game-row { grid-template-columns: 23px 88px minmax(0,1fr) 55px; gap: 9px; min-height: 78px; }
       .game-art { width: 88px; height: 52px; }
       .game-info h3 { font-size: 11px; }
@@ -389,7 +398,7 @@
     function loadSavedGames() {
       try {
         const saved = JSON.parse(localStorage.getItem('playlog-games'));
-        return Array.isArray(saved) && saved.length ? saved : null;
+        return Array.isArray(saved) ? saved : null;
       } catch { return null; }
     }
 
@@ -450,24 +459,29 @@
           <div class="game-info"><h3>${escapeHtml(game.name)}</h3><p>${escapeHtml(game.detail || 'In your Steam library')}</p></div>
           <div class="playtime"><strong>${formatHours(game.hours)}</strong><span>played</span></div>
         </article>`).join('');
+      const recommendation = games.length ? `
+        <div class="recommendation-art" style="background-image:url('${escapeHtml(activePick.image)}')"><span class="match-pill">Picked for your play style</span></div>
+        <div class="recommendation-copy"><span class="eyebrow">YOUR NEXT GAME</span><h2>${escapeHtml(activePick.name)}</h2><p>Because you put the most time into <strong>${escapeHtml(activePick.topGame)}</strong>. ${escapeHtml(activePick.reason)}</p>
+          <div class="recommendation-footer"><span class="price">${escapeHtml(activePick.price)}</span><button class="store-link" type="button" data-store="${activePick.appid}">View on Steam ↗</button></div>
+        </div>` : `
+        <div class="recommendation-empty"><span class="eyebrow">YOUR NEXT GAME</span><h2>Add games to see your recommendation</h2><p>Once you add games to your library, we can suggest what to play next.</p><button class="secondary-button" type="button" data-add-game>Add a game</button></div>`;
 
       document.querySelector('#appContent').innerHTML = `
         <div class="welcome-row">
           <div><span class="eyebrow">YOUR LIBRARY, IN GOOD COMPANY</span><h1>Good evening, ${escapeHtml(profile?.name || 'Morgan')}.</h1><p>Your next favorite might be closer than you think.</p></div>
-          <div class="welcome-actions"><button class="secondary-button" type="button" data-add-game>Add a game</button><button class="connect-button" type="button" data-connect><span aria-hidden="true">＋</span>${profile ? 'Manage Steam profile' : 'Connect Steam profile'}</button></div>
+          <div class="welcome-actions"><button class="secondary-button" type="button" data-add-game>Add a game</button><button class="secondary-button" type="button" data-reset-games>Reset games</button><button class="connect-button" type="button" data-connect><span aria-hidden="true">＋</span>${profile ? 'Manage Steam profile' : 'Connect Steam profile'}</button></div>
         </div>
+        <aside class="key-notice" aria-labelledby="keyNoticeTitle">
+          <div class="key-notice-copy"><h2 id="keyNoticeTitle">Some games require an APK Key</h2><p>Some games need an APK Key to be detected or added automatically, so they may not appear in your game list. Check the game's APK Key requirements before assuming it is unsupported. If it's missing, add it manually.</p></div>
+          <button class="secondary-button" type="button" data-add-game>Add missing game</button>
+        </aside>
         <div class="dashboard-grid">
           <section aria-labelledby="mostPlayedTitle">
             <div class="section-heading"><h2 id="mostPlayedTitle">Most played</h2><span>Ranked by hours</span></div>
             <div class="game-list" id="gameList">${gameRows || '<div class="empty-state">No games to show yet. Connect a public Steam profile to get started.</div>'}</div>
             <div class="empty-state hidden" id="searchEmpty">No games match that search.</div>
           </section>
-          <aside class="recommendation" aria-label="Recommended game">
-            <div class="recommendation-art" style="background-image:url('${escapeHtml(activePick.image)}')"><span class="match-pill">Picked for your play style</span></div>
-            <div class="recommendation-copy"><span class="eyebrow">YOUR NEXT GAME</span><h2>${escapeHtml(activePick.name)}</h2><p>Because you put the most time into <strong>${escapeHtml(activePick.topGame)}</strong>. ${escapeHtml(activePick.reason)}</p>
-              <div class="recommendation-footer"><span class="price">${escapeHtml(activePick.price)}</span><button class="store-link" type="button" data-store="${activePick.appid}">View on Steam ↗</button></div>
-            </div>
-          </aside>
+          <aside class="recommendation" aria-label="${games.length ? 'Recommended game' : 'Recommendation'}">${recommendation}</aside>
         </div>
         <div class="below-grid">
           <section><div class="section-heading"><h2>Your playtime</h2><span>Across ${games.length} games</span></div><div class="stat-strip"><div class="stat"><strong>${games.length}</strong><span>Games played</span></div><div class="stat"><strong>${Math.round(totalHours).toLocaleString()}</strong><span>Total hours</span></div><div class="stat"><strong>${formatHours(sorted[0]?.hours || 0).replace(' hrs','')}</strong><span>Top game hours</span></div></div></section>
@@ -550,14 +564,14 @@
       document.querySelector('#modalRoot').innerHTML = `
         <div class="modal-backdrop" id="modalBackdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="addGameTitle">
           <div class="modal-top"><div><span class="eyebrow">YOUR LIBRARY</span><h2 id="addGameTitle">Add a game</h2></div><button class="close-button" type="button" aria-label="Close" data-close>&times;</button></div>
-          <p>Steam only shares a short most-played list here. Add other games yourself; these stay saved in this browser.</p>
-          <form class="connect-form" id="addGameForm"><label for="manualGameName">Game name</label><input id="manualGameName" name="name" type="text" maxlength="80" placeholder="e.g. Another game" required><label for="manualGameHours">Hours played</label><input id="manualGameHours" name="hours" type="number" min="0" step="0.1" placeholder="0" required><label for="manualGameAppId">Steam app ID (optional)</label><input id="manualGameAppId" name="appid" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="For game artwork"><button class="primary-button" type="submit">Add to library</button><p class="form-message" id="formMessage" aria-live="polite"></p></form>
+          <p>Games are checked against the Steam store before they are added. Manually added games stay saved in this browser.</p>
+          <form class="connect-form" id="addGameForm"><label for="manualGameName">Game name</label><input id="manualGameName" name="name" type="text" maxlength="80" placeholder="e.g. Stardew Valley" required><label for="manualGameHours">Hours played</label><input id="manualGameHours" name="hours" type="number" min="0" step="0.1" placeholder="0" required><label for="manualGameAppId">Steam app ID (optional)</label><input id="manualGameAppId" name="appid" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="For game artwork"><button class="primary-button" type="submit">Add to library</button><p class="form-message" id="formMessage" aria-live="polite"></p></form>
         </section></div>`;
       document.querySelector('#manualGameName').focus();
       document.querySelector('#modalBackdrop').addEventListener('click', event => {
         if (event.target.id === 'modalBackdrop' || event.target.closest('[data-close]')) closeModal();
       });
-      document.querySelector('#addGameForm').addEventListener('submit', event => {
+      document.querySelector('#addGameForm').addEventListener('submit', async event => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         const name = String(form.get('name')).trim();
@@ -567,17 +581,48 @@
           document.querySelector('#formMessage').textContent = 'Enter a game name, valid hours, and a numeric app ID if you use one.';
           return;
         }
-        const existing = games.find(game => game.name.toLowerCase() === name.toLowerCase());
-        const appid = requestedAppId || existing?.appid || `manual-${Date.now()}`;
-        const game = { appid, name, hours, image: requestedAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${requestedAppId}/header.jpg` : (existing?.image || ''), detail: 'Added manually' };
-        if (existing) Object.assign(existing, game);
-        else games.push(game);
-        activePick = getRecommendation(activePick?.appid);
-        saveProfile();
-        closeModal();
-        currentView = 'library';
-        render();
+        const submit = event.currentTarget.querySelector('button[type="submit"]');
+        const message = document.querySelector('#formMessage');
+        submit.disabled = true;
+        submit.textContent = 'Checking Steam…';
+        message.textContent = 'Verifying this game in the Steam store…';
+        try {
+          const searchUrl = new URL('https://store.steampowered.com/api/storesearch/');
+          searchUrl.search = new URLSearchParams({ term: name, l: 'english', cc: 'US' });
+          const response = await fetch(searchUrl);
+          if (!response.ok) throw new Error('Steam could not verify this game. Try again later.');
+          const result = await response.json();
+          const normalizedName = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const match = result.items?.find(item => normalizedName(item.name) === normalizedName(name));
+          if (!match) throw new Error('No exact game title was found in the Steam store. Check the name and try again.');
+          if (requestedAppId && requestedAppId !== String(match.id)) throw new Error('That app ID does not match this Steam game.');
+          const existing = games.find(game => game.name.toLowerCase() === match.name.toLowerCase());
+          const appid = String(match.id);
+          const game = { appid, name: match.name, hours, image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`, detail: 'Added manually' };
+          if (existing) Object.assign(existing, game);
+          else games.push(game);
+          activePick = getRecommendation(activePick?.appid);
+          saveProfile();
+          closeModal();
+          currentView = 'library';
+          render();
+        } catch (error) {
+          message.textContent = error.message || 'Could not verify this game with Steam. Try again later.';
+          submit.disabled = false;
+          submit.textContent = 'Add to library';
+        }
       });
+    }
+
+    function resetGames() {
+      if (!window.confirm('Remove all games and reset this library?')) return;
+      games = [];
+      profile = null;
+      activePick = getRecommendation(activePick?.appid);
+      document.querySelector('#gameSearch').value = '';
+      saveProfile();
+      currentView = 'library';
+      render();
     }
 
     function closeModal() { document.querySelector('#modalRoot').innerHTML = ''; }
@@ -654,6 +699,7 @@
       }
       if (event.target.closest('[data-connect]') || event.target.closest('#profileButton')) { openConnectModal(); return; }
       if (event.target.closest('[data-add-game]')) { openAddGameModal(); return; }
+      if (event.target.closest('[data-reset-games]')) { resetGames(); return; }
       const storeButton = event.target.closest('[data-store]');
       if (storeButton) window.open(`https://store.steampowered.com/app/${encodeURIComponent(storeButton.dataset.store)}/`, '_blank', 'noopener,noreferrer');
     });
